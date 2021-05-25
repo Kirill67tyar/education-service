@@ -13,9 +13,7 @@ db.sqlite3-journal
 media
 s_admin_s
 
-idea/
-idea
-encodings.xml
+
 .env
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
 # in your Git repository. Update and uncomment the following line accordingly.
@@ -190,6 +188,7 @@ dmypy.json
 # .idea/compiler.xml
 # .idea/jarRepositories.xml
 # .idea/modules.xml
+# .idea/encodings.xml
 # .idea/*.iml
 # .idea/modules
 # *.iml
