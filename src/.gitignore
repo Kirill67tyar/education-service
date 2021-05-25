@@ -13,7 +13,8 @@ db.sqlite3-journal
 media
 s_admin_s
 
-.idea
+idea/
+idea
 encodings.xml
 .env
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
