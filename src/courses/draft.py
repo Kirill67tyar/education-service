@@ -87,6 +87,7 @@ Installed 5 object(s) from 1 fixture(s)
 3) прокси модели
 
 ------- Абстрактная модель
+from django.contrib.auth.models import AbstractUser
 Абстрактная модель - это базовый класс. В нем необходимо определить поля, которые будут общими для
 всех дочерних классов.
 Абстрактные модели полезны, когда нужно описать некую общую базовую информацию.
@@ -123,7 +124,7 @@ class BaseContent(Model):
 class Text(BaseContent):
     body = TextField()
 
-Не совсем понятно для чего она и какие у нее преимущества.
+Не совсем понятно для чего она, какие у нее преимущества и недостатки.
 
 ------- Прокси-модели
 Они используются когда модели хранят одинаковые данные но поведение классов отличается.
@@ -150,6 +151,9 @@ class OrderingContent(BaseContent):
         return timezone.now() - self.created
 
 В донном случае OrderingContent добавит сортировку по умолчанию для QuerySet и метод created_delta
+
+Очень полезная статья, но немного не по теме
+https://docs.djangoproject.com/en/3.2/ref/models/fields/
 """
 
 # То что мы сделали в модели Content - называется обощенная связь
@@ -164,3 +168,5 @@ class OrderingContent(BaseContent):
 # Только поля content_type и object_id будут иметь столбцы в бд
 # поле item (GenericForeignKey) - используется только в python коде, хранится
 # в оперативной памяти, позволяет нам получить или задать связанный объект.
+from django.contrib.auth.models import AbstractUser
+
