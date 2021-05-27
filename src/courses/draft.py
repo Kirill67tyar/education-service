@@ -154,6 +154,102 @@ class OrderingContent(BaseContent):
 
 Очень полезная статья, но немного не по теме
 https://docs.djangoproject.com/en/3.2/ref/models/fields/
+
+
+---------------------------------------------------------------------------------------------
+                        Примеси (Mixins)
+
+https://docs.djangoproject.com/en/3.2/topics/class-based-views/mixins/
+
+Примиси (Mixins) - это класс, который используется при множественном наследовании.
+При определении класса можно задействовать несколько примесей, каждая из которых добавит
+часть функций в класс.
+Примеси удобны в двух случаях:
+1 - нужно использовать несколько различных функций в рамках моего класса
+2 - реализовать одну и туже функциональность в нескольких классах
+
+В rest_framework тоже используются миксины для CRUD функционала
+Вспомни, миксины в rest_framework добавляют нам функционал list, retrieve,create, update, partial_update, destroy
+И работают они совместно с GenericApiView
+
+Чтобы определять самому миксины - нужно хорошо разбираться в django, какие методы, за что отвечают,
+какие вызываются и когда, какие атрибуты используются.
+
+*****Разбор классов обработчиков, и логики кастомных миксинов*****
+
+OwnerMixin
+базовый миксин для работы owner.
+
+OwnerEditMixin - для CreateView и UpdateView (переопределяем form_valid), для работы с owner
+
+OwnerCourseMixin
+унаследован от - OwnerMixin
+класс для работы с курсом. будет использоваться для функционала Read и Delete
+
+OwnerCourseEditMixin
+унаследован от - OwnerCourseMixin OwnerEditMixin
+допалняет необходимую инфу (атрибуты) для CreateView и UpdateView
+класс для работы с курсом. будет использоваться для функционала Create и Update
+
+ManageCourseListView OwnerCourseMixin ListView
+Для функционала Read
+
+CourseCreateView OwnerCourseEditMixin CreateView
+Для функционала Create
+
+CourseUpdateView OwnerCourseEditMixin UpdateView
+Для функционала Update
+
+CourseDeleteView OwnerCourseMixin DeleteView
+Для функционала Delete
+
+form_valid(self, form) - определена в ModelFormMixin (from django.views.generic.edit import ModelFormMixin)
+или чуть раньше. Не путать с методом is_valid форм.
+работает с формами и модельными формами - CreateView, UpdateView. Метод выполняется, когда форма
+успешно проходит валидацию.
+Поведение по умоланию:
+-- сохранение объекта в бд (для модельных форм)
+-- перенаправление пользователя на страницу по адресу success_url (для обыных форм)
+
+Пока не до конца понятно как он работает, но он как-то связан с CreateView, UpdateView
+про form_valid есть здесь https://docs.djangoproject.com/en/3.2/ref/class-based-views/generic-editing/
+
+Помни, что для CreateView и UpdateView в шаблоне будет доступна переменная из контекта - form
+
+больше всего меня обескуражила строчка form.instance.owner = self.request.user в form_valid(form)
+как минимум у обычных форм нету instance как до так и после валидации (во всяком случае у невалидных)
+
+fields (в OwnerCourseEditMixin) поля модели, из которых будет формироваться объект обрабочиками
+CreateView и UpdateView. Возможно - по большей части для form от CreateView и UpdateView
+
+success_url - тоже для CreateView и UpdateView - куда перенаправлять в случае успешной обработки
+формы классами CreateView и UpdateView
+
+---------------------------------------------------------------------------------------------
+                                Permissions
+
+https://docs.djangoproject.com/en/3.2/topics/auth/customizing/#custom-permissions
+
+У user django есть атрибут is_superuser. Если он True - то django даст доступ такому пользователю
+ко всем возможностям системы.
+
+В django определено две примиси для ограничения доступа:
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
+LoginRequiredMixin
+PermissionRequiredMixin
+
+для PermissionRequiredMixin нужно добавлять атрибут permission_required =
+примесь PermissionRequiredMixin добавляет проверку налиия у пользователя разрешения
+указанного в атрибуте permission_required.
+Так обработчики будут доступны только пользователям, имеющим соответствующее разрешение
+
+обрати внимание, что в бд у нас есть две таблицы:
+auth_permissions и auth_group_permissions
+
+а в auth_permissions есть столбик code_name
+
+от туда мы можем брать permissions (permission_required)
 """
 
 # То что мы сделали в модели Content - называется обощенная связь

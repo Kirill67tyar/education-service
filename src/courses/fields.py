@@ -4,24 +4,6 @@ from django.core.exceptions import ObjectDoesNotExist
 
 
 class OrderField(PositiveIntegerField):
-    """
-    for_fields - список или тапл в котором должны содержаться
-    названия моделей ForeignKey(ManyToOne для модели где определено поле),
-    типа for_fields=['course', ]
-
-    pre_save - метод уже есть в PositiveIntegerField (а может и вообще в Field)
-    выполяется перед тем, как Django сохранит поле в бд
-
-    model_instance - экземпляр модели, где определено поле
-
-    self.attname - атрибут экземпляра класса поля,
-    дает переменную атрибута в формате str, к которой мы присвоили наше поле
-
-    self.model - модель где определено наше поле
-
-    как создавать классы для полей модели:
-    https://docs.djangoproject.com/en/3.2/howto/custom-model-fields/
-    """
 
     def __init__(self, for_fields=None, *args, **kwargs):
         self.for_fields = for_fields
@@ -68,3 +50,30 @@ class OrderField(PositiveIntegerField):
         # просто продолжаем поведение метода pre_save
         else:
             return super(OrderField, self).pre_save(model_instance, add)
+
+
+"""
+    for_fields - список или тапл в котором должны содержаться
+    названия моделей ForeignKey(ManyToOne для модели где определено поле),
+    типа for_fields=['course', ]
+
+    pre_save - метод уже есть в PositiveIntegerField (а может и вообще в Field)
+    выполяется перед тем, как Django сохранит поле в бд
+    в слуае с PositiveIntegerField возвращает значение поля, которое должно быть сохранено в бд
+    возможно pre_save - это такой метод, который специально дает возможность поработать со значением поля
+    перед сохранением в бд, т.е. метод для кастомных полей. Но это только возможно.
+    вот как он выглядит в классе Field:
+        def pre_save(self, model_instance, add):
+            'Return field's value just before saving.'
+            return getattr(model_instance, self.attname)
+
+    model_instance - экземпляр модели, где определено поле
+
+    self.attname - атрибут экземпляра класса поля,
+    дает переменную атрибута в формате str, к которой мы присвоили наше поле
+
+    self.model - модель где определено наше поле
+
+    как создавать классы для полей модели:
+    https://docs.djangoproject.com/en/3.2/howto/custom-model-fields/
+"""
