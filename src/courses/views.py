@@ -1,12 +1,14 @@
-from django.shortcuts import render
 from django.http import JsonResponse
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.list import ListView
+from django.views.generic.base import View, TemplateResponseMixin
 from django.views.generic.edit import (CreateView, UpdateView, DeleteView, ModelFormMixin)
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
+from courses.forms import ModuleFormSet
 from courses.utils import get_view_at_console1
-from courses.models import Course
+from courses.models import (Subject, Course, Module, Content)
 
 
 def experiments_view(request):
@@ -35,7 +37,12 @@ class OwnerEditMixin:
 
     def form_valid(self, form):
         # вот благодаря этой строчке наши курсы автоматически сохраняются за нужным юзером
-        form.instance.owner = self.request.user
+        # я сделал здесь try - except потому что у обычных форм атрибута instance может и не быть
+        # вроде как он есть только у ModelForm
+        try:
+            form.instance.owner = self.request.user
+        except AttributeError:
+            pass
         return super().form_valid(form)
 
 
@@ -68,6 +75,55 @@ class CourseDeleteView(PermissionRequiredMixin, OwnerCourseMixin, DeleteView):
     success_url = reverse_lazy('courses:manage_course_list')
     permission_required = 'courses.delete_course'
 
+
+class CourseModuleUpdateView(TemplateResponseMixin, View):
+    template_name = 'courses/manage/course/formset.html'
+    course = None
+
+    def get_formset(self, data=None):
+        return ModuleFormSet(instance=self.course, data=data)
+
+    def dispatch(self, request, pk):
+        self.course = get_object_or_404(klass=Course, pk=pk, owner=request.user)
+        return super().dispatch(request, pk)
+
+    def get(self, request, *args, **kwargs):
+        formset = self.get_formset()
+        return self.render_to_response({'formset': formset, 'course': self.course, })
+
+    def post(self, request, *args, **kwargs):
+        formset = self.get_formset(request.POST)
+        if formset.is_valid():
+            formset.save()
+            return redirect(reverse('courses:manage_course_list'))
+        return self.render_to_response({'formset': formset, 'course': self.course, })
+
+
+"""
+CourseModuleUpdateView 
+унаследован от: TemplateResponseMixin View
+
+TemplateResponseMixin - примесь, которая добавит формирование HTML шаблона
+и вернет его в качестве ответа на запрос.
+Использует шаблон template_name определенный как атрибут класса. 
+Добавляет в дочерние классы метод render_to_response
+в который можно просто передать контекст и он будет использовать template_name атрибута класса
+
+View - базовый класс для обработчиков Django
+
+get_formset - здесь для того, чтобы избежать дублирование кода
+
+dispatch
+метода, который определен в базовом классе View.
+Принимает объект запроса (request) и его параметры
+и пытается вызвать метод в python коде, который соответствует методу HTTP запроса
+Если запрос отправлен с методом GET то вызовет метод get() в класса
+Если POST - то post()
+
+get
+
+post
+"""
 
 """
 Примиси (Mixins) - это класс, который используется при множественном наследовании.
@@ -134,7 +190,7 @@ form_valid(self, form) - определена в ModelFormMixin (from django.vie
 как минимум у обычных форм нету instance как до так и после валидации (во всяком случае у невалидных)
 
 fields (в OwnerCourseEditMixin) поля модели, из которых будет формироваться объект обрабочиками
-CreateView и UpdateView. Возможно - по большей части для form от CreateView и UpdateView
+CreateView и UpdateView. Возможно - по большей части для ModelForm от CreateView и UpdateView
 
 success_url - тоже для CreateView и UpdateView - куда перенаправлять в случае успешной обработки
 формы классами CreateView и UpdateView

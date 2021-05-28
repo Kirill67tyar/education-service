@@ -170,7 +170,7 @@ https://docs.djangoproject.com/en/3.2/topics/class-based-views/mixins/
 
 В rest_framework тоже используются миксины для CRUD функционала
 Вспомни, миксины в rest_framework добавляют нам функционал list, retrieve,create, update, partial_update, destroy
-И работают они совместно с GenericApiView
+И работают они совместно с GenericAPIView
 
 Чтобы определять самому миксины - нужно хорошо разбираться в django, какие методы, за что отвечают,
 какие вызываются и когда, какие атрибуты используются.
@@ -225,6 +225,12 @@ CreateView и UpdateView. Возможно - по большей части дл
 success_url - тоже для CreateView и UpdateView - куда перенаправлять в случае успешной обработки
 формы классами CreateView и UpdateView
 
+
+Т.е. грубо говоря примеси(миксины) - нужны для определенной функциональности.
+
+Благодаря миксинам мы создаем возможность делать то-то. И дальше в разных классах можем
+это использовать
+
 ---------------------------------------------------------------------------------------------
                                 Permissions
 
@@ -250,6 +256,56 @@ auth_permissions и auth_group_permissions
 а в auth_permissions есть столбик code_name
 
 от туда мы можем брать permissions (permission_required)
+
+
+
+---------------------------------------------------------------------------------------------
+                                    formsets
+
+https://docs.djangoproject.com/en/3.2/topics/forms/formsets/
+https://docs.djangoproject.com/en/3.2/topics/forms/modelforms/#model-formsets
+
+В Django предусмотрен механизм работы с несколькими формами на одной странице
+Такая группа состоящая из нескольких форм называется набором форм, или формсетами.
+
+is_valid() - позволяет проверить валидность всех входящих в него форм за один раз.
+
+За что отвечает formset (model-formsets)?
+-- позволяет отображать несколько объектов типо Form и ModelForm (отправляется эти объекты на сервер за один раз)
+-- определяет кол-во форм
+-- определяет какое кол-во полей нужно отображать при редактировании объектов
+-- устанавливает ограничение на максимальное кол-во создаваемых объектов
+
+
+***** from courses.forms*****
+from django import forms
+from django.forms import inlineformset_factory
+
+from courses.models import Course, Module
+
+ModuleFormSet = inlineformset_factory(Course,
+                                      Module,
+                                      fields=['title', 'description', ],
+                                      extra=2,
+                                      can_delete=True)
+
+# объект одного типа - Module будет связан с объектами другого типа - Course
+
+# fields - поля, которые будут добавлены для каждой формы набора
+# (description как? ведь его в модели Сourse - нет)
+
+# extra - количество дополнительных пустных форм модулей
+# (помимо тех, что отобразятся)
+
+# can_delete - если установить в True, Django для каждого набора добавит checkbox (чекбокс)
+# с помощью которого можно отметить объект к удалению
+
+# я так понимаю, что inlineformset_factory специально для подчиненных моделей, которые связаны с
+# главной моделью многие к одному.
+
+# дальше мы работаем с этой формой в обработчике CourseModuleUpdateView courses/views.py
+# смотри туда
+
 """
 
 # То что мы сделали в модели Content - называется обощенная связь

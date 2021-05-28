@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{course.title}}{% endblock %}
+
+{% block content %}
+
+<h1>
+    <a href="{% url 'courses:manage_course_list' %}">
+        <<<&nbsp;&nbsp;
+    </a>
+    Работа с модулями курса
+    <a href="{% url 'courses:manage_course_list' %}">
+        "{{course.title}}"
+    </a>
+</h1>
+<div class="module">
+    <form action="." method="post">
+        <h2>Модули курса</h2>
+        {{ formset }}
+        {{ formset.management_form }}
+        {% csrf_token %}
+        <input type="submit" class="button" value="Сохранить модуль">
+    </form>
+</div>
+{% endblock %}
