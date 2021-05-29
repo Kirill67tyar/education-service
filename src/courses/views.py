@@ -1,4 +1,6 @@
+from django.apps import apps
 from django.http import JsonResponse
+from django.forms import modelform_factory
 from django.urls import reverse_lazy, reverse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic.list import ListView
@@ -95,7 +97,7 @@ class CourseModuleUpdateView(TemplateResponseMixin, View):
         formset = self.get_formset(request.POST)
         if formset.is_valid():
             formset.save()
-            return redirect(reverse('courses:manage_course_list'))
+            return redirect(reverse('courses:course_module_update', kwargs={'pk': self.course.pk, }))
         return self.render_to_response({'formset': formset, 'course': self.course, })
 
 
@@ -112,17 +114,125 @@ TemplateResponseMixin - примесь, которая добавит форми
 View - базовый класс для обработчиков Django
 
 get_formset - здесь для того, чтобы избежать дублирование кода
+принимает аргумент data, и вызывает ModuleFormSet опреленный нами в forms.py
+аргумент instance в формсете ModuleFormSet нужен для определения родительской модели 
+(parent_model в inlineformset_factory) аргумент data - для изменения дочерних моделей
+ссылающихся на главную многие к одному.
 
 dispatch
 метода, который определен в базовом классе View.
 Принимает объект запроса (request) и его параметры
-и пытается вызвать метод в python коде, который соответствует методу HTTP запроса
+и пытается вызвать метод в python коде непосредственно в классе View
+(и в классах, которые от него заимствуются), который соответствует методу HTTP запроса
 Если запрос отправлен с методом GET то вызовет метод get() в класса
 Если POST - то post()
+Логика такая:
+if request.method.lower() in self.http_method_names:
+    handler = getattr(self, request.method.lower(), self.http_method_not_allowed)
+else:
+    handler = self.http_method_not_allowed
+"""
+
+
+class ContentCreateUpdateView(TemplateResponseMixin, View):
+    obj = None
+    model = None
+    module = None
+    template_name = 'courses/manage/content/form.html'
+
+    def get_model(self, model_name, *args, **kwargs):
+        if model_name in ['text',
+                          'file',
+                          'image',
+                          'video', ]:
+            return apps.get_model(app_label='courses',
+                                  model_name=model_name)
+        return None
+
+    def get_form(self, model, *args, **kwargs):
+        Form = modelform_factory(model=model, exclude=['owner',
+                                                       'order',
+                                                       'created',
+                                                       'updated', ])
+        return Form(*args, **kwargs)
+
+    def dispatch(self, request, module_id, model_name, pk=None):
+        self.model = self.get_model(model_name)
+        self.module = get_object_or_404(Module,
+                                        pk=module_id,
+                                        course__owner=request.user)
+        if pk:
+            self.obj = get_object_or_404(self.model,
+                                         pk=pk,
+                                         owner=request.user)
+        return super().dispatch(request, module_id, model_name, pk=None)
+
+    def get(self, request, module_id, model_name, pk=None):
+        form = self.get_form(self.model, instance=self.obj)
+        return self.render_to_response({'form': form,
+                                        'object': self.obj,
+                                        'module': self.module, })
+
+    def post(self, request, module_id, model_name, pk=None):
+        form = self.get_form(self.model, instance=self.obj,
+                             data=request.POST, files=request.FILES)
+        if form.is_valid():
+            item = form.save(commit=False)
+            item.owner = request.user
+            item.save()
+            if not pk:
+                # создаем новый контент
+                Content.objects.create(module=self.module, item=item)
+            return redirect(reverse('courses:course_module_update',
+                                    kwargs={'pk': self.module.pk, }))
+        return self.render_to_response({'form': form,
+                                        'object': self.obj,
+                                        'module': self.module, })
+
+
+"""
+шаблоны урлов для этого обработчика используется следующие:
+'module/<int:module_id/content/<str:model_name>/create/ - для create
+'module/<int:module_id/content/<str:model_name>/<int:pk>/ - для update
+где: 
+module_id - id одного из модулей
+model_name - имя одной из потенциальных моделей привязанных к Content 
+(тройной связью при помощи ContentType) ['text', 'file', 'image', 'video',]
+pk - id этого типа контента, если мы используем update
+
+
+ContentCreateUpdateView 
+Заимствован от TemplateResponseMixin View
+
+get_model model_name *args, **kwargs
+model_name должен быть именем одной из модели - ['text', 'file', 'image', 'video',]
+
+get_form model, *args, **kwargs
+используем modelform_factory которая создаст модельную форму сама, исключив поля
+указанные в именованном аргументе exclude
+
+dispatch
+перед тем, как dispatch решит какой метод у этого http запроса, и какой метод
+соответственно надо вызывать в классе заимствованном от View - get или post
+1) мы молжны определеть  каким модулем мы работаем конкретно
+2) какая у нас модель типа данных для Content - text, file, image, video
+3) если в url передался pk для действия update то должны узнать, не только модель
+типа данных для Content но и с какой конкретно записью из таблицы мы работаем
 
 get
+при get передаем в контекст форму, куда кладем именованный аргумент instance=self.obj
+если self.obj будет None, то будет пустая форма,
+а если у нас действие update то передаст экземпляр нужной модели
 
 post
+кладем в форму request.POST и request.FILES. 
+если валидная, то присаиваем нужного овнера
+если pk в url не передавалась, то отработал шаблон с /create/
+значит нужно создать новую запись в таблице courses_content
+с помощью ORM Django и модели Content. Но связь там не обычная,
+а обощенная, привязанная к модели ContentType
+Это мне меньше всего понятно, ведь создание связи с ContentType не такое-же
+как с другой моделью.
 """
 
 """

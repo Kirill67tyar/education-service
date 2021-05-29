@@ -3,8 +3,8 @@ from django.forms import inlineformset_factory
 
 from courses.models import Course, Module
 
-ModuleFormSet = inlineformset_factory(Course,
-                                      Module,
+ModuleFormSet = inlineformset_factory(parent_model=Course,
+                                      model=Module,
                                       fields=['title', 'description', ],
                                       extra=2,
                                       can_delete=True)
@@ -22,6 +22,13 @@ ModuleFormSet = inlineformset_factory(Course,
 
 # я так понимаю, что inlineformset_factory специально для подчиненных моделей, которые связаны с
 # главной моделью многие к одному.
+
+# главная модель - аргумент parent_model
+# подчиненная модель - аргумент model
+
+# inline - что в admin что в формах означает что мы в определенной модели
+# которая имеет связи один ко многим редактируем подчиненные модели, которые связаны с
+# этой моделью многие к одному
 
 # дальше мы работаем с этой формой в обработчике CourseModuleUpdateView courses/views.py
 # смотри туда
