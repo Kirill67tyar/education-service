@@ -3,9 +3,9 @@
 {% block title %}
 {% if object %}
 Дополнить контект "{{ object }}"
-модуля "{{ module }}"
+модуля "{{ module.title }}"
 {% else %}
-Создать новый контент модуля "{{ module }}"
+Создать новый контент модуля "{{ module.title }}"
 {% endif %}
 {% endblock %}
 
@@ -13,9 +13,9 @@
 <h1>
     {% if object %}
     Дополнить контект "{{ object }}"
-    модуля "{{ module }}"
+    модуля "{{ module.title }}"
     {% else %}
-    Создать новый контент модуля "{{ module }}"
+    Создать новый контент модуля "{{ module.title }}"
     {% endif %}
 </h1>
 <div class="module">

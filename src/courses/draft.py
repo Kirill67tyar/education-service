@@ -306,6 +306,18 @@ ModuleFormSet = inlineformset_factory(Course,
 # дальше мы работаем с этой формой в обработчике CourseModuleUpdateView courses/views.py
 # смотри туда
 
+
+---------------------------------------------------------------------------------------------
+                                    apps
+
+
+from django.apps import apps
+apps.get_model(app_label='courses', model_name=model_name)
+
+apps.get_models(), - возвращает список всех кстановленных моделей
+apps.get_model(app_label='courses', model_name='model_name') - возвращает конкретно эту модель
+
+https://docs.djangoproject.com/en/3.2/ref/applications/
 """
 
 # То что мы сделали в модели Content - называется обощенная связь
@@ -321,4 +333,8 @@ ModuleFormSet = inlineformset_factory(Course,
 # поле item (GenericForeignKey) - используется только в python коде, хранится
 # в оперативной памяти, позволяет нам получить или задать связанный объект.
 from django.contrib.auth.models import AbstractUser
+
+from django.apps import apps
+# apps.get_model(app_label='courses', model_name=model_name)
+
 

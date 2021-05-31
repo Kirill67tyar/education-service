@@ -1,3 +1,5 @@
+from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
+
 from django.apps import apps
 from django.http import JsonResponse
 from django.forms import modelform_factory
@@ -131,6 +133,15 @@ if request.method.lower() in self.http_method_names:
     handler = getattr(self, request.method.lower(), self.http_method_not_allowed)
 else:
     handler = self.http_method_not_allowed
+    
+Важно помнить, то в методе python (от класса View) методы get и post
+вызываются после метода dispatch(отправить) и параметры request (динамически изменяющиеся параметры url)
+будут передаваться в get и post те же самые, что передавались и в dispatch
+т.е. в get и post передаются эти параметры от dispatch.
+Поэтому при заимствовании логики работы dispatch от базового View - 
+super().dispatch(some_arguments) важно положить туда нужные аргументы,
+какие нужны для get и post запроса. Я уже по жесткому ошибся с этим методом,
+передав при super туда None. Ошибок не было, но код вел себя не правильно.
 """
 
 
@@ -140,7 +151,7 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
     module = None
     template_name = 'courses/manage/content/form.html'
 
-    def get_model(self, model_name, *args, **kwargs):
+    def get_model(self, model_name):
         if model_name in ['text',
                           'file',
                           'image',
@@ -165,7 +176,7 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
             self.obj = get_object_or_404(self.model,
                                          pk=pk,
                                          owner=request.user)
-        return super().dispatch(request, module_id, model_name, pk=None)
+        return super().dispatch(request, module_id, model_name, pk)
 
     def get(self, request, module_id, model_name, pk=None):
         form = self.get_form(self.model, instance=self.obj)
@@ -183,11 +194,34 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
             if not pk:
                 # создаем новый контент
                 Content.objects.create(module=self.module, item=item)
-            return redirect(reverse('courses:course_module_update',
-                                    kwargs={'pk': self.module.pk, }))
+            return redirect(reverse('courses:module_content_list',
+                                    kwargs={'module_id': self.module.pk, }))
         return self.render_to_response({'form': form,
                                         'object': self.obj,
                                         'module': self.module, })
+
+
+class ContentDeleteView(View):
+
+    def post(self, request, pk, *args, **kwargs):
+        kwargs_for_content = {
+            'klass': Content,
+            'pk': pk,
+            'module__course__owner': request.user,
+        }
+        content = get_object_or_404(**kwargs_for_content)
+        module = content.module
+        content.item.delete()
+        content.delete()
+        return redirect(reverse('courses:module_content_list', args=[module.pk, ]))
+
+
+class ModuleContentListView(TemplateResponseMixin, View):
+    template_name = 'courses/manage/module/content_list.html'
+
+    def get(self, request, module_id):
+        module = get_object_or_404(Module, pk=module_id, course__owner=request.user)
+        return self.render_to_response({'module': module, })
 
 
 """
@@ -305,3 +339,22 @@ CreateView и UpdateView. Возможно - по большей части дл
 success_url - тоже для CreateView и UpdateView - куда перенаправлять в случае успешной обработки
 формы классами CreateView и UpdateView
 """
+
+
+# CsrfExemptMixin -
+# JsonRequestResponseMixin -
+class ModuleOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
+    def post(self, request):
+        get_view_at_console1(self.request_json, dictionary=True)
+        get_view_at_console1(self.request_json, dictionary=False)
+        for pk, order in self.request_json.items():
+            Module.objects.filter(pk=pk, course__owner=request.user).update(order=order)
+        return self.render_json_response({'saved': 'OK', })
+
+
+class ContentOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
+    def post(self, request):
+        get_view_at_console1(self.request_json, dictionary=True)
+        for pk, order in self.request_json.items():
+            Content.objects.filter(pk=pk, module__course__owner=request.user).update(order=order)
+        return self.render_json_response({'saved': 'OK', })

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from courses.models import Module, Course, Subject
+from courses.models import Module, Course, Subject, Content
 
 
 # https://docs.djangoproject.com/en/3.2/ref/contrib/admin/
@@ -22,3 +22,8 @@ class CourseModelAdmin(admin.ModelAdmin):
     search_fields = ['title', 'overview', ]
     prepopulated_fields = {'slug': ('title',)}
     inlines = [ModuleInline, ]
+
+
+@admin.register(Content)
+class ContentModelAdmin(admin.ModelAdmin):
+    list_display = ['pk', ]
