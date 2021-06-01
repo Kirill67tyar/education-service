@@ -5,11 +5,13 @@ from courses.views import (experiments_view, ManageCourseListView,
                            CourseDeleteView, CourseModuleUpdateView,
                            ContentCreateUpdateView, ContentDeleteView,
                            ModuleContentListView, ModuleOrderView,
-                           ContentOrderView, )
+                           ContentOrderView, CourseListView,
+                           CourseDetailView, )
 
 app_name = 'courses'
 
 urlpatterns = [
+    # -------------------CMS:
     # course read/create/update/delete views:
     path('mine/', ManageCourseListView.as_view(), name='manage_course_list'),
     path('create/', CourseCreateView.as_view(), name='course_create'),
@@ -28,6 +30,11 @@ urlpatterns = [
     # order views:
     path('module/order/', ModuleOrderView.as_view(), name='module_order'),
     path('content/order/', ContentOrderView.as_view(), name='content_order'),
+
+    # -------------------FOR USERS (NOT CMS):
+    path('subject/<slug:subject>/', CourseListView.as_view(), name='course_list_subject'),
+    path('', CourseListView.as_view(), name='course_list'),
+    path('<slug:slug>/', CourseDetailView.as_view(), name='course_detail'),
 
     # experiments:
     path('experiments/', experiments_view, name='experiments'),

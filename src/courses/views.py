@@ -1,10 +1,13 @@
+from json import loads
 from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
 
 from django.apps import apps
+from django.db.models import Count
 from django.http import JsonResponse
 from django.forms import modelform_factory
 from django.urls import reverse_lazy, reverse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
+from django.views.generic import DetailView
 from django.views.generic.list import ListView
 from django.views.generic.base import View, TemplateResponseMixin
 from django.views.generic.edit import (CreateView, UpdateView, DeleteView, ModelFormMixin)
@@ -15,9 +18,16 @@ from courses.utils import get_view_at_console1
 from courses.models import (Subject, Course, Module, Content)
 
 
-def experiments_view(request):
-    get_view_at_console1(request.session)
-    return JsonResponse({'status': 'ok', })
+def experiments_view(self=None, request=None):
+    # get_view_at_console1(request.session)
+    # get_view_at_console1(self.request_json, dictionary=True)
+    # get_view_at_console1(self.request_json, dictionary=False)
+    # # get_view_at_console1(request.body, delimiter='+', dictionary=True)
+    # get_view_at_console1(request.body, delimiter='+', dictionary=False)
+    # get_view_at_console1(loads(request.body), delimiter='+', unpack=0)
+    obj = JsonRequestResponseMixin()
+    get_view_at_console1(obj, delimiter='+', unpack=1)
+    return None
 
 
 # недействительный обработчик*****************************
@@ -341,20 +351,66 @@ success_url - тоже для CreateView и UpdateView - куда перенап
 """
 
 
-# CsrfExemptMixin -
-# JsonRequestResponseMixin -
 class ModuleOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
     def post(self, request):
-        get_view_at_console1(self.request_json, dictionary=True)
-        get_view_at_console1(self.request_json, dictionary=False)
-        for pk, order in self.request_json.items():
+        # experiments_view(self, request=request)
+
+        ## можно так
+        # for pk, order in self.request_json.items():
+        #     Module.objects.filter(pk=pk, course__owner=request.user).update(order=order)
+        # return self.render_json_response({'saved': 'OK', })
+
+        ## или так
+        for pk, order in loads(request.body).items():
             Module.objects.filter(pk=pk, course__owner=request.user).update(order=order)
-        return self.render_json_response({'saved': 'OK', })
+        return JsonResponse({'saved': 'OK', })
 
 
 class ContentOrderView(CsrfExemptMixin, JsonRequestResponseMixin, View):
     def post(self, request):
-        get_view_at_console1(self.request_json, dictionary=True)
         for pk, order in self.request_json.items():
             Content.objects.filter(pk=pk, module__course__owner=request.user).update(order=order)
         return self.render_json_response({'saved': 'OK', })
+
+
+"""
+CsrfExemptMixin - позволяет отклюить проверку CSRF-токена для некоторых post запросов
+JsonRequestResponseMixin - преобразует данные запроса в json, и сериализует ответ в JSON
+возвращая его с типом application/json
+такие методы доступны для экземпляров JsonRequestResponseMixin:
+content_type
+dispatch
+error_response_dict
+get_content_type
+get_json_dumps_kwargs
+get_request_json
+json_dumps_kwargs
+json_encoder_class
+render_bad_request_response
+render_json_object_response
+render_json_response
+require_json
+"""
+
+
+class CourseListView(TemplateResponseMixin, View):
+    template_name = 'courses/course/list.html'
+    model = Course
+
+    def get(self, request, subject=None):
+        subjects = Subject.objects.annotate(total_courses=Count('courses'))
+        courses = Course.objects.annotate(total_modules=Count('modules'))
+        if subject:
+            subject = get_object_or_404(Subject, slug=subject)
+            courses = courses.filter(subject=subject)
+        context = {
+            'subjects': subjects,
+            'subject': subject,
+            'courses': courses,
+        }
+        return self.render_to_response(context=context)
+
+
+class CourseDetailView(DetailView):
+    template_name = 'courses/course/detail.html'
+    model = Course

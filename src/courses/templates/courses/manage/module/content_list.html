@@ -13,13 +13,13 @@
             <a href="{% url 'courses:module_content_list' m.id %}">
             <span>
                 Модуль <span class="order">{{ m.order|add:1 }}</span>
-              </span>
+            </span>
                 <br>
                 {{ m.title }}
             </a>
         </li>
         {% empty %}
-        <li>No modules yet.</li>
+        <li>Модулей пока нет</li>
         {% endfor %}
     </ul>
     <p><a href="{% url 'courses:course_module_update' course.id %}">Дополнить модули</a></p>
