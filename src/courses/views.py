@@ -13,6 +13,7 @@ from django.views.generic.base import View, TemplateResponseMixin
 from django.views.generic.edit import (CreateView, UpdateView, DeleteView, ModelFormMixin)
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
+from students.forms import CourseEnrollForm
 from courses.forms import ModuleFormSet
 from courses.utils import get_view_at_console1
 from courses.models import (Subject, Course, Module, Content)
@@ -414,3 +415,9 @@ class CourseListView(TemplateResponseMixin, View):
 class CourseDetailView(DetailView):
     template_name = 'courses/course/detail.html'
     model = Course
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        initial = {'course': self.object, }
+        context['enroll_form'] = CourseEnrollForm(initial=initial)
+        return context

@@ -17,6 +17,17 @@
         Автор: {{ object.owner.username|title }}
     </p>
     {{ object.overview|linebreaks }}
+    {% if request.user.is_authenticated %}
+    <form action="{% url 'students:student_enroll_course' %}" method="post">
+        {{ enroll_form }}
+        {% csrf_token %}
+        <input type="submit" class="button" value="Записаться на курс">
+    </form>
+    {% else %}
+    <a href="{% url 'students:student_registration' %}" class="button">
+        зарегистрироваться перед тем как записаться
+    </a>
+    {% endif %}
 </div>
 {% endwith %}
 {% endblock %}

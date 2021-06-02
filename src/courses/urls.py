@@ -31,7 +31,8 @@ urlpatterns = [
     path('module/order/', ModuleOrderView.as_view(), name='module_order'),
     path('content/order/', ContentOrderView.as_view(), name='content_order'),
 
-    # -------------------FOR USERS (NOT CMS):
+    # -------------------FOR STUDENTS (NOT CMS):
+    # course read - list, list with subject, detail
     path('subject/<slug:subject>/', CourseListView.as_view(), name='course_list_subject'),
     path('', CourseListView.as_view(), name='course_list'),
     path('<slug:slug>/', CourseDetailView.as_view(), name='course_detail'),

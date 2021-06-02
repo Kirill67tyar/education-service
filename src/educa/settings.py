@@ -14,6 +14,8 @@ import os
 import dotenv
 from pathlib import Path
 
+from django.urls import reverse_lazy
+
 dotenv.load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'students.apps.StudentsConfig',
+    'embed_video',
 ]
 
 MIDDLEWARE = [
@@ -137,7 +140,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 # -------------------------------------------------------- MEDIA settings
 
 # -------------------------------------------------------- AUTHENTICATION settings
-LOGIN_REDIRECT_URL = 'courses:manage_course_list'
+LOGIN_REDIRECT_URL = reverse_lazy('students:student_course_list')
+# LOGIN_REDIRECT_URL - настройка, которую использует пакет django auth
+# для определения адреса, куда перенаправлять пользователя после успешной
+# авторизации на сайте, если парамет next (видимо в шаблоне) не задан явно
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

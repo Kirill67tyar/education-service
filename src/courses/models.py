@@ -1,11 +1,12 @@
 # from django.db import models
+from django.template.loader import render_to_string
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db.models import (Model, CharField, SlugField,
                               ForeignKey, TextField, DateTimeField,
                               PositiveIntegerField, FileField, URLField,
-                              CASCADE, )
+                              ManyToManyField, CASCADE, )
 
 from courses.fields import OrderField
 
@@ -30,6 +31,7 @@ class Course(Model):
     slug = SlugField(max_length=250, unique=True)
     overview = TextField()
     created = DateTimeField(auto_now_add=True)
+    students = ManyToManyField(User, related_name='courses_joined', blank=True)
 
     class Meta:
         ordering = ['-created', ]
@@ -120,6 +122,11 @@ class AbstractBaseItem(Model):
 
     def __str__(self):
         return self.title
+
+    def render(self):
+        model_name = self._meta.model_name.lower()
+        template_name = f'courses/content/{model_name}.html'
+        return render_to_string(template_name=template_name, context={'item': self, })
 
 
 # благодаря related_name='%(class)s_related'
