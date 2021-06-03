@@ -43,12 +43,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'students.apps.StudentsConfig',
     'embed_video',
+    'memcache_status',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',  # для кеширования всего сайта
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # для кеширования всего сайта
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -147,5 +151,20 @@ LOGIN_REDIRECT_URL = reverse_lazy('students:student_course_list')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
+
+# -------------------------------------------------------- CACHES settings (for Memcached)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',  # 11211 - port для Memcached по умолчанию.
+    }
+}
+
+# для кеширования всего сайта (отключить если надо)
+CACHE_MIDDLEWARE_ALIAS = 'default'  # - псевдоним кеша
+CACHE_MIDDLEWARE_SECONDS = 60 * 5  # 5 minutes
+CACHE_MIDDLEWARE_KEY_PREFIX = 'educa'  # - префикс для всех ключей чтобы избежать пересечения
+# при использовании одного рабочего процесса Memcached с несколькими проектами
+# -------------------------------------------------------- CACHES settings
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

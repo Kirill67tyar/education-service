@@ -1,5 +1,6 @@
 from django.urls import reverse_lazy
 from django.shortcuts import render, redirect
+from django.views.decorators.cache import cache_page
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -51,6 +52,7 @@ class StudentCourseListView(LoginRequiredMixin, ListView):
         return qs.filter(students__in=[self.request.user, ])
 
 
+# @cache_page(60 * 5)
 class StudentCourseDetailView(DetailView):
     model = Course
     template_name = 'students/course/detail.html'

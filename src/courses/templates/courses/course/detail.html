@@ -28,6 +28,11 @@
         зарегистрироваться перед тем как записаться
     </a>
     {% endif %}
+    <p>
+        <a href="{% url 'students:student_course_detail' object.pk %}" class="button">
+            Перейти к курсу
+        </a>
+    </p>
 </div>
 {% endwith %}
 {% endblock %}

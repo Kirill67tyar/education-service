@@ -5,16 +5,30 @@
     <meta charset="UTF-8">
     <title>{% block title %}Educa{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'font-awesome-4.7.0/css/font-awesome.min.css' %}">
 </head>
 <body>
 
 <div id="header">
-    <a href="/" class="logo">Educa</a>
+    <a href="/" class="logo">
+        <i class="fa fa-coffee" aria-hidden="true"></i>
+        Educa
+    </a>
     <ul class="menu">
         {% if request.user.is_authenticated %}
-        <li><a href="{% url 'logout' %}">Sign-out</a></li>
+        <li>
+            <a href="{% url 'logout' %}">
+                Выйти&nbsp;
+                <i class="fa fa-sign-out fa-lg" aria-hidden="true"></i>
+            </a>
+        </li>
         {% else %}
-        <li><a href="{% url 'login' %}">Sign-in</a></li>
+        <li>
+            <a href="{% url 'login' %}">
+                Войти&nbsp;
+                <i class="fa fa-sign-in fa-lg" aria-hidden="true"></i>
+            </a>
+        </li>
         {% endif %}
     </ul>
 </div>

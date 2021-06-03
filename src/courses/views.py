@@ -3,6 +3,7 @@ from braces.views import CsrfExemptMixin, JsonRequestResponseMixin
 
 from django.apps import apps
 from django.db.models import Count
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.forms import modelform_factory
 from django.urls import reverse_lazy, reverse
@@ -349,6 +350,10 @@ CreateView и UpdateView. Возможно - по большей части дл
 
 success_url - тоже для CreateView и UpdateView - куда перенаправлять в случае успешной обработки
 формы классами CreateView и UpdateView
+
+
+!!! Оень важный момент - в базовом View url параметры доступны в self.kwargs. 
+Не путать self.kwargs с kwargs который мы передаем в функцию.
 """
 
 
@@ -399,11 +404,30 @@ class CourseListView(TemplateResponseMixin, View):
     model = Course
 
     def get(self, request, subject=None):
-        subjects = Subject.objects.annotate(total_courses=Count('courses'))
-        courses = Course.objects.annotate(total_modules=Count('modules'))
+        subjects = cache.get('all_subjects')
+        if not subjects:
+            subjects = Subject.objects.annotate(total_courses=Count('courses'))
+            cache.set('all_subjects', subjects)
+        all_courses = Course.objects.annotate(total_modules=Count('modules'))
         if subject:
             subject = get_object_or_404(Subject, slug=subject)
-            courses = courses.filter(subject=subject)
+            key = f'subject_{subject.pk}_courses'
+            # достаем из низкоуровневого кеша наши курсы по конкретному subject
+            courses = cache.get(key)
+            # если в кеше их нет - то полуачаем это вручную делая query в db
+            if not courses:
+                courses = all_courses.filter(subject=subject)
+                # и сохраняем их в кеше с уникальным ключом.
+                cache.set(key, courses)
+                # Ниже логика практически такая-же
+                # непонятно только одно - если мы создадим новый курс по данному
+                # предмету, в кеше будет устаревшая ин-фа. Как django поймет,
+                # что ин-фа неактуальна, или никак не поймет?
+        else:
+            courses = cache.get('all_courses')
+            if not courses:
+                courses = all_courses
+                cache.set('all_courses', courses)
         context = {
             'subjects': subjects,
             'subject': subject,

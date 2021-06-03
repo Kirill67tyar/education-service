@@ -27,3 +27,6 @@ class CourseModelAdmin(admin.ModelAdmin):
 @admin.register(Content)
 class ContentModelAdmin(admin.ModelAdmin):
     list_display = ['pk', ]
+
+
+admin.site.index_template = 'memcache_status/admin_index.html'
