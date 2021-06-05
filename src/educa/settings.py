@@ -50,9 +50,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.cache.UpdateCacheMiddleware',  # для кеширования всего сайта
+    # 'django.middleware.cache.UpdateCacheMiddleware',  # для кеширования всего сайта
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',  # для кеширования всего сайта
+    # 'django.middleware.cache.FetchFromCacheMiddleware',  # для кеширования всего сайта
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -160,11 +160,11 @@ CACHES = {
     }
 }
 
-# для кеширования всего сайта (отключить если надо)
-CACHE_MIDDLEWARE_ALIAS = 'default'  # - псевдоним кеша
-CACHE_MIDDLEWARE_SECONDS = 60 * 5  # 5 minutes
-CACHE_MIDDLEWARE_KEY_PREFIX = 'educa'  # - префикс для всех ключей чтобы избежать пересечения
-# при использовании одного рабочего процесса Memcached с несколькими проектами
+# # для кеширования всего сайта (отключить если надо)
+# CACHE_MIDDLEWARE_ALIAS = 'default'  # - псевдоним кеша
+# CACHE_MIDDLEWARE_SECONDS = 60 * 5  # 5 minutes
+# CACHE_MIDDLEWARE_KEY_PREFIX = 'educa'  # - префикс для всех ключей чтобы избежать пересечения
+# # при использовании одного рабочего процесса Memcached с несколькими проектами
 # -------------------------------------------------------- CACHES settings
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

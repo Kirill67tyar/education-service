@@ -52,7 +52,6 @@ class StudentCourseListView(LoginRequiredMixin, ListView):
         return qs.filter(students__in=[self.request.user, ])
 
 
-# @cache_page(60 * 5)
 class StudentCourseDetailView(DetailView):
     model = Course
     template_name = 'students/course/detail.html'
