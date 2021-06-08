@@ -85,6 +85,13 @@ class Content(Model):
 
 # Модель Content определяет обощенную связь с различными типами содержимого
 
+# Очень важный момент - если ты хочешь сериализовать таблицу ссылающуюся
+# на ContentType с помощью обощенной связи, то смотри на классы в courses/api/serializers.py:
+# - ItemRelatedField
+# - ContentSerializer
+
+# Там все понятно, только должен быть определен метод render (или какой другой метод)
+
 # Про limit_choices_to есть здесь:
 # https://docs.djangoproject.com/en/3.2/ref/models/fields/
 """

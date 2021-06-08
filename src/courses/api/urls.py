@@ -23,7 +23,7 @@ urlpatterns = [
     # courses API
     # path('courses/<int:pk>/', CourseDetailAPIView.as_view(), name='course_detail_api'),
     # path('courses/', CourseListAPIView.as_view(), name='course_list_api'),
-    path('courses/<int:pk>/enroll/', CourseEnrollAPIView.as_view(), name='course_enroll_api'),
+    # path('courses/<int:pk>/enroll/', CourseEnrollAPIView.as_view(), name='course_enroll_api'),
 
     # для router от DRF
     path('', include(router.urls)),

@@ -716,6 +716,15 @@ DjangoModelPermissionsOrAnonReadOnly - анонимные пользовател
 
 
 
+
+
+
+************** Serializers (Model, all)
+
+отлиная статья о принципах работы Serilalizer и ModelSerializer и Serilalizer
+https://www.django-rest-framework.org/api-guide/serializers/
+
+
 Сериализаторы, которые мы определяем - могут заимствоваться от 3 классов:
 1) Serializer - сериализует обычные python классы (объекты python)
 2) ModelSerializer - преобразует объекты моделей Django (превращает в OrderedDict или ReturnList)
@@ -723,8 +732,6 @@ DjangoModelPermissionsOrAnonReadOnly - анонимные пользовател
 формирует http ссылки а не внешние ключи.
 (есть еще поле HyperlinkedIdentityField которое позволяет это сделать в ModelSerializer)
 
-
-************** Serializers (Model, all)
 
 Система проста:
 
@@ -783,7 +790,7 @@ REST_FRAMEWORK = {
 from rest_framework.renderers import JSONRenderer
 
 Для определенния конкретного класса рендерера DRF смотрит на тип объекта, который
-нужно преобразовать (dict или OrderedDict или ReturnList).
+нужно преобразовать (dict или QuerySet или экземпляр модели).
 тип ответа зависит от заголовка Accept, HTTP запроса
 
 для формирования json ответа будет задействован JSONRenderer
@@ -824,6 +831,57 @@ from rest_framework.views import APIView
 возвращая необходимые коды ошибок
 -- Реализует методы авторизации и аутентификации, чтобы была возможность ограниить доступ
 к обработчику API-запросов
+
+А вообще система довольна проста:
+
+1) Есть базовый APIView.
+- Методы get, post, put, patch, delete там придется полностью писать вручную,
+вернее начинку этих методов, сам эти методы там есть, т.к. APIView заимствован от View из Django
+- Атрибуты queryset, serializer_class, permission_classes, authentication_classes и т.д
+там есть
+
+2) Есть:
+- GenericAPIView (from rest_framework.generics)
+и миксины:
+- CreateModelMixin (Create)(from rest_framework import mixins):
+- ListModelMixin (Read)
+- RetrieveModelMixin (Read)
+- UpdateModelMixin (Update)
+- DestroyModelMixin (Delete)
+Так вот, у этих миксинов есть методы list, retrieve, create, update, partial_update, destroy
+(а также perform_create и perform_update)
+Эти миксины с этими методами работают только в связке с GenericAPIView
+
+Так что можно создавать классы вручную и наследоваться от миксина и GenericAPIView
+А можно использовать из rest_framework.generics типо ListAPIView или RetrieveUpdateDestroyAPIView
+Они уже унаследованы от миксинов и GenericAPIView, причем во всех возможных вариантах.
+
+3) Есть ViewSet (from rest_framework.viewsets)
+Ситуация схожа с генериками которые уже от всего унаследованы, но добавляется еще класс GenericViewSet
+И есть итоговый базовый класс:
+- ModelViewSet
+С полным CRUD функционалом.
+Из преимществ появляется self.action (list, retrieve и т.д.)
+И возможность настроить роутер в urls.py
+
+Вот что написано в ModelViewSet  в viewsets.py:
+
+ViewSets are essentially just a type of class based view, that doesn't provide
+any method handlers, such as `get()`, `post()`, etc... but instead has actions,
+such as `list()`, `retrieve()`, `create()`, etc...
+
+Actions are only bound to methods at the point of instantiating the views.
+
+    user_list = UserViewSet.as_view({'get': 'list'})
+    user_detail = UserViewSet.as_view({'get': 'retrieve'})
+
+Typically, rather than instantiate views from viewsets directly, you'll
+register the viewset with a router and let the URL conf be determined
+automatically.
+
+    router = DefaultRouter()
+    router.register(r'users', UserViewSet, 'user')
+    urlpatterns = router.urls
 
 
 ************** Обработка аутентификации пользователей в DRF
@@ -916,10 +974,7 @@ class IsAuthorOrReadOnly(BasePermission):
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
-        # мой вариант
-        any((self.has_permission(request=request, view=view), request.method in SAFE_METHODS))
 
-        # не мой вариант
         if request.method in SAFE_METHODS:
             return True
         return request.user == obj.author
@@ -927,10 +982,67 @@ class IsAuthorOrReadOnly(BasePermission):
 
 Т.е. надо определить has_permission и has_object_permission
 
+BasePermission - базовый класс, от которого должен наследоваться наш permission
 
+has_permission - выполняет проверку доступа на уровне обработчика
+has_object_permission - проверяет доступ к объекту
+
+Чтобы разрешить доступ нужно возвращать True, чтобы запретить - False
+
+
+---------------------------------------------------------------------------------------------
+                    WSGI
+
+https://wsgi.readthedocs.io/en/latest/
+https://docs.djangoproject.com/en/3.2/howto/deployment/wsgi/
+
+Очень, очень хорошая статья
+https://habr.com/ru/post/426957/
+
+WSGI (Web Server Gateway Interface) - это интерфейс для взаимодействия
+python приложения и веб-сервера. Является своего рода стандартом
+при запуске Django-приложений.
+
+Когда мы создаем новый проект с помощью startproject
+Django добавляет файл wsgi.py
+
+Он содрежит вызываемый объект, который используется WSGI в качестве точки
+входа в приложение. WSGI применим как и для разработки, так и для боевого режима
+
+
+****** uWSGI
+
+https://uwsgi-docs.readthedocs.io/en/latest/
+https://uwsgi-docs.readthedocs.io/en/latest/WSGIquickstart.html
+uWSGI (программа) - очень быстрый сервер для python.
+Он взаимодействует с python-приложениями посредством WSGI
+Именно uWSGI занимается приобразованием запросов в формат,
+с которым может рабоать django
+
+
+Как это все работает для Django:
+            :www
+            :
+            :       HTTP                    Socket                      WSGI
+| Client |------------------>| NGINX |------------------>| uWSGI |------------------>| Django |
+| browser|<------------------|       |<------------------|       |<------------------|        |
+            :
+
+В такой цепочке запрос от клиента обрабатывается в несколько шагов:
+
+1) NGINX принимает HTTP запрос
+
+2) Если запрос на получение статических файлов, его обрабатывает сам NGINX
+Если запрос на что-то другое, NGINX делегирует его обрабоку веб-серверу uWSGI через сокет
+
+3) uWSGI принимает входящий запрос, и передает его в Django-приложение.
+Результирующий HTTP ответ передается по цепочке в обратном порядке,
+и NGINX отправляет его клиенту.
 
 """
 
+# Прокси сервер - принимает в себя все входяще запросы,
+# и распределяет их межд множеством веб-приложений.
 
 from rest_framework.parsers import JSONParser
 
@@ -958,3 +1070,31 @@ from django.apps import apps
 
 # 4 способа переопределить работать с User (крутая статья):
 # https://simpleisbetterthancomplex.com/tutorial/2016/07/22/how-to-extend-django-user-model.html
+
+"""
+NGINX - 
+
+WSGI - 
+
+uWSGI - 
+
+Как сервер работает для Django:
+
+            :www
+            :
+__________  :       HTTP     _________        Socket     _________         WSGI      __________ 
+| Client |------------------>| NGINX |------------------>| uWSGI |------------------>| Django |
+| browser|<------------------|       |<------------------|       |<------------------|        |
+----------  :                ---------                   ---------                   ----------
+            
+В такой цепочке запрос от клиента обрабатывается в несколько шагов:
+
+1) NGINX принимает HTTP запрос
+
+2) Если запрос на получение статических файлов (CSS, JavaScript, Media), его обрабатывает сам NGINX
+Если запрос на что-то другое, NGINX делегирует его обрабоку веб-серверу uWSGI через сокет
+
+3) uWSGI принимает входящий запрос, и передает его в Django-приложение.
+Результирующий HTTP ответ передается по цепочке в обратном порядке,
+и NGINX отправляет его клиенту.
+"""
