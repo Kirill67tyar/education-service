@@ -1,5 +1,7 @@
 from .pro import *
 try:
-    from .local import *
+    from .for_local import local
+    if local:
+        from .local import *
 except ImportError:
     pass
