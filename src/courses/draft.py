@@ -744,6 +744,9 @@ https://www.django-rest-framework.org/api-guide/serializers/
 1) если Create - принимает request.data (по сути словарь, то что приходит с POST/PUT/PATCH запросами)
 2) если Update - то принимает сначала экземпляр модели или Queryset в аргумент instance
     а в аргумент data принимает request.data
+3) Важный момент, когда у тебя обработчик - класс, унаследованный от GenericAPIView и миксина
+в методе perform_create ты не можещь вызывать serializer.data при создании.
+ты можешь вызывать validated_data и вызовется OrderedDict при создании новой записи
 
 Далее у serializer (экземпляр класса заимствованного от Serializer или ModelSerializer)
 будет доступен аргумент data, где можно посмотреть, что в нем содержится.
@@ -929,6 +932,213 @@ https://developer.mozilla.org/ru/docs/Web/HTTP/Headers/Authorization
 
 заголовок Authorization использует кодировку base64
 что не безопасно. Ее можно с лугкостью расшифровать.
+
+
+В чем недостаток basic authentication в DRF
+
+в headers запроса появляется загловок со значением:
+Authorization: Basic a2lyaWxsYm9nb21vbG92LnJpY0B5YW5kZXgucnU6YWxza2RqZmhn
+
+это можно декодировать в utf-8 - https://www.base64decode.org/
+Это обычная кодировка base64 и передается в headers каждый раз при GET запросе
+Главных недостатка 2:
+1 - каждый раз мы светим email и паролем в headers в небезопасной кодировке - очень не безопасно.
+2 - лишняя нагрузка на базу данных, ведь каждый раз при таком запросе приходится
+сверять email и пароль в базе данных.
+
+Это не как обычная авторизация, когда мы проверяем валидность логина и пароля,
+и если всне норм, то запоминаем что это нужный пользователь с помощью сессионого ключа
+который создается с помощью функции login().
+
+Здесь мы каждый раз проверяем логин и пароль, что очень не эффективно.
+
+Поэтому лучше использовать систему JWT токен
+
+************** JSON Web Token (JWT)
+https://jwt.io/
+https://pyjwt.readthedocs.io/en/stable/
+https://github.com/Kirill67tyar/pyjwt
+https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
+https://pypi.org/project/djangorestframework-simplejwt/
+
+Гугли дополнительно про JWT.
+Много картинок и схем как это работает.
+Вот неплохая статься https://habr.com/ru/post/340146/
+она же на английском:
+https://morioh.com/p/63009714b79a
+
+И of course wikipedia: https://en.wikipedia.org/wiki/JSON_Web_Token
+
+Картинка JWT:
+C:\Users\User\Desktop\Job\learning_tree\tree-of-knowledge\web\JWT\JWT
+
+
+Там можно выбирать разные алгоритмы формирования этого токена (по умолчанию HS256)
+
+Данный токен представляет из себя короткое время жизни, и предстовляет из себя структуру,
+которую можно однозначно идентифицировать
+
+Пример токена:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+Состоит из трех частей:
+HEADER:ALGORITHM & TOKEN TYPE
+1 часть - голова, где передается алгоритм шифрования и какой это тип токена
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+PAYLOAD:DATA
+2 часть - это данные по пользователю (нечувствительные данные имя или id юзера,
+или администратор ли он, метаданные в общем) данные чтобы пользователя можно было однозначно идентифицировать
+iat - это время жизни этого токена
+Как формируются ключи JWT, какие обязательны, какие нет:
+https://en.wikipedia.org/wiki/JSON_Web_Token#Standard_fields
+{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "iat": 1516239022
+}
+
+VERIFY SIGNATURE
+3 часть - это пара первых двух частей (headers и payload), которые зашифрованы с помощью секретного
+ключа, который знает только сервер
+HMACSHA256(
+  base64UrlEncode(header) + "." +
+  base64UrlEncode(payload),
+
+your-256-bit-secret
+
+)
+
+Важно - все эти три данные в токене декодированы base64
+
+* Как это все работает?
+1) Когда сервер получает данный токен, он его разбивает на три части по точке
+2) При это у сервера есть свой секретный ключ
+3) И сервер их шифрует с помощью секретного ключа
+4) И если эти данные совпали с тем, что пришло от клиента
+точнее совпадает 3 часть токена и то как зашифровал сервер с помощью секретного ключа
+значит тому пользователю, что указан во второй части (payload) можно доверять
+
+Дальше как это работает на уровне сервера смотри видео с 8:09 (django API, bot flask)
+
+
+* Зачем нужно маленькое время жизни данного ключа?
+Для того чтобы уменьшить вероятность использования данного токена другими людьми
+Если кто-то в HTTP трафике перехватит этот токен, этот токен через 5 мимнут протухнет,
+и он уже им воспользоваться не сможет
+
+* Как получить новый токен?
+Для этих целей придумана другая структура. Не просто один токен, а пара токенов
+
+"access token" - многоразового использования, но с коротким временем жизни
+"refresh token" - одноразовый, но с большим временем жизни
+
+Похоже refresh token это приватный ключ, а access token - публичный ключ
+Того токен, что мы разобрази выше это access token который быстро протухает
+Его можно много раз использвать, до того, как он протухнет
+Как только он протух нужно получить новый access token
+Для этого как раз и новый refresh
+refresh token позволяет обратиться по определенному адресу, полуить новую пару
+access token и refresh token и опять использовать уже новый access token
+до времени жизни access token и тд.
+
+Эти токены получаются один раз, когда происходит логирование на сайте.
+нормальная авторизация через метод post. Сервер сам выдает эти токены при валидной авторизации
+
+* А как быть, если хакер перехватил и access и refresh token?
+Ну походит он по серверу, что-то поделает. Но потом эта пара будет невалидна той,
+которую настоящий пользователь получит заново при авторизации.
+
+Система будет видеть что не у пользователя не у хакера не валидный refresh
+и таким образом анулируются все токены, нужно будет пройти снова процесс авторизации
+и после этого нормальный пользователь получит новые access и refresh, которые будут отличаться
+от того, то есть у хакера.
+
+Это в целом безопасная система, которая минимизирует взлом и возможность долго
+пользоваться чужим аккаунтом.
+Уходит от того, что очень увствительные данные будут использоваться в теле запроса
+Будут использоваться только токены. Максимум инфы это возможный id пользователя.
+
+
+************** djangorestframework-simplejwt
+Как работать с библиотекой djangorestframework-simplejwt
+для системы токенов
+важно - при использовании такой системы authenticated_classes нужно отключать в обработчиках
+https://django-rest-framework-simplejwt.readthedocs.io/en/latest/getting_started.html#installation
+https://pypi.org/project/djangorestframework-simplejwt/
+
+* Как установить:
+1) pip install djangorestframework-simplejwt
+2) добавить 'rest_framework_simplejwt.authentication.JWTAuthentication',
+в базовую настройку REST_FRAMEWORK, поднастройку DEFAULT_AUTHENTICATION_CLASSES
+
+REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES': (
+        ...
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        )
+    ...}
+3) в корневом urls.py импортировать TokenObtainPairView и TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+4) добавть в корневой urlpatterns:
+path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+5) все, минимальная настройка готова
+
+* Механиз авторизации с token:
+1) Для первого раза делаешь post запрос на http://127.0.0.1:8000/api/token/
+при этом вставляешь в тело запроса JSON данные
+{"email": "kirillbogomolov.ric@yandex.ru",
+"password": "alskdjfhg"}
+или те, с помощью которых происходит аутентификация на сервере
+
+2) получаешь два токена (в body HTTP-response):
+{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTYyNDMwNTkyNiwianRpIjoiYzlmMjA5Y2NmODRlNDdjOGExZDdjMjZlZjI5Y2FkZjciLCJ1c2VyX2lkIjoxfQ.bVv5YYN8ucakAlTk2pIs-Cx_79_uYzZ-OQLZlaZ1FkE",
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjI0MjE5ODI2LCJqdGkiOiI1NTZmMmQ1ZmQxZWE0NzQ2ODNiMDRhYmMzZWJmOTY5YSIsInVzZXJfaWQiOjF9.ZCVkefJofX-OqsNZdtEdN9YDYczLml8glQSlxLBb2ls"
+}
+
+refresh token - публичный токен который быстро протухает
+access token - приватный токен, который нужно сохранить, и менять, когда публичный протухнет
+по тому адресу http://127.0.0.1:8000/api/token/refresh/
+или можно получть новые refresh и access токены
+
+3) для доступа к контенту
+выбираешь способ аутентификации Bearer Token и вставляешь access token в нужное место
+
+4) чтобы обновить access token посылаешь post запрос по адресу (без аутентификации)
+http://127.0.0.1:8000/api/token/refresh/
+с телом запроса:
+{"refresh":
+"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.
+eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTYyNDMwNTkyNiwianRpIjoiYzlmMjA5Y2NmODRlNDdjOGExZDdjMjZlZjI5Y2FkZjciLCJ1c2VyX2lkIjoxfQ.
+bVv5YYN8ucakAlTk2pIs-Cx_79_uYzZ-OQLZlaZ1FkE"}
+(любой другой refresh token)
+и получаешь access token, который можешь дальше использовать
+
+*
+refresh token по умолчанию один день
+access token по умолчанию 5 минут
+
+в настройках можно менять
+https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html
+from datetime import timedelta
+
+...
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),# - отвечает за срок годности access token
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),# - отвечает за срок годности refresh token
+    ...
+
+
+Когда ты автризиуешься через Bearer Token то в заголовках HTTP появится такой заголовок:
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjI0MjIxNDY5LCJqdGkiOiIzZDNlYjFhZmJmNGY0YjZhOTYyZTM0Y2NkM2EyMTExZSIsInVzZXJfaWQiOjF9.QYDh52m4ixIPo0aqQ0cCjiO_AvMQ1uLP04Wa53FvAwc
+(понятно что вместо eyJ0eXAiOiJKV... будет access token)
 
 
 
